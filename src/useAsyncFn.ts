@@ -2,27 +2,28 @@ import { DependencyList, useCallback, useState, useRef } from 'react';
 import useMountedState from './useMountedState';
 import { FnReturningPromise, PromiseType } from './util';
 
-export type AsyncState<T> =
-  | {
-      loading: boolean;
-      error?: undefined;
-      value?: undefined;
-    }
-  | {
-      loading: true;
-      error?: Error | undefined;
-      value?: T;
-    }
-  | {
-      loading: false;
-      error: Error;
-      value?: undefined;
-    }
-  | {
-      loading: false;
-      error?: undefined;
-      value: T;
-    };
+export interface AsyncStateLoading {
+  loading: true;
+}
+export interface AsyncStateError {
+  loading: false;
+  error: Error;
+}
+
+export interface AsyncStateValue<T> {
+  loading: false;
+  value: T;
+}
+
+export type AsyncState<T> = AsyncStateLoading | AsyncStateError | AsyncStateValue<T>;
+
+export function isAsyncStateError<T>(state: AsyncState<T>): state is AsyncStateError {
+  return !state.loading && state.hasOwnProperty("error");
+}
+
+export function isAsyncStateValue<T>(state: AsyncState<T>): state is AsyncStateError {
+  return !state.loading && state.hasOwnProperty("value");
+}
 
 type StateFromFnReturningPromise<T extends FnReturningPromise> = AsyncState<PromiseType<ReturnType<T>>>;
 
@@ -31,7 +32,7 @@ export type AsyncFnReturn<T extends FnReturningPromise = FnReturningPromise> = [
 export default function useAsyncFn<T extends FnReturningPromise>(
   fn: T,
   deps: DependencyList = [],
-  initialState: StateFromFnReturningPromise<T> = { loading: false }
+  initialState: StateFromFnReturningPromise<T> = { loading: true }
 ): AsyncFnReturn<T> {
   const lastCallId = useRef(0);
   const isMounted = useMountedState();
